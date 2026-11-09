@@ -1,0 +1,15 @@
+[package]
+name = "fornthulani-plugin-cors"
+version = "0.1.0"
+edition = "2024"
+description = "CORS middleware for the fornthulani micro HTTP framework."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/thomas666-beast/fornthulani-plugin-cors"
+keywords = ["fornthulani", "cors", "middleware", "http"]
+categories = ["web-programming::http-server"]
+
+[dependencies]
+fornthulani = { path = "../fornthulani", version = "0.1.0" }
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["blocking", "json"] }

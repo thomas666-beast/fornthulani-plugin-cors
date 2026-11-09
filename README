@@ -1,0 +1,138 @@
+fornthulani-plugin-cors
+=======================
+
+CORS middleware for the
+[fornthulani](https://crates.io/crates/fornthulani) micro HTTP framework.
+
+Handles Access-Control-* headers, preflight OPTIONS requests, and
+origin allow-listing — all as a plugin, with zero changes to core.
+
+
+----------------------------------------------------------------------
+INSTALL
+----------------------------------------------------------------------
+
+  [dependencies]
+  fornthulani = "0.1.0"
+  fornthulani-plugin-cors = "0.1.0"
+
+
+----------------------------------------------------------------------
+USE
+----------------------------------------------------------------------
+
+  use fornthulani::{Router, Server};
+  use fornthulani_plugin_cors::Cors;
+
+  // Any origin
+  let server = Server::new(router).with_middleware(Cors::permissive());
+
+  // Allow-list
+  let server = Server::new(router)
+      .with_middleware(Cors::restricted(["https://example.com", "https://app.example.com"]));
+
+  // With cookies / Authorization
+  let server = Server::new(router)
+      .with_middleware(
+          Cors::restricted(["https://example.com"]).allow_credentials(true),
+      );
+
+
+----------------------------------------------------------------------
+BEHAVIOUR
+----------------------------------------------------------------------
+
+  OPTIONS + allowed Origin
+      ->  204 No Content
+          Access-Control-Allow-Origin
+          Access-Control-Allow-Methods
+          Access-Control-Allow-Headers
+          Access-Control-Max-Age
+          (Access-Control-Allow-Credentials if enabled)
+
+  OPTIONS + disallowed Origin
+      ->  403 Forbidden
+
+  GET/POST/... + allowed Origin
+      ->  Controller response
+          Access-Control-Allow-Origin
+          Access-Control-Allow-Methods
+          Access-Control-Allow-Headers
+          Access-Control-Expose-Headers
+          (Access-Control-Allow-Credentials if enabled)
+
+  GET/POST/... + disallowed Origin
+      ->  403 Forbidden (before the controller runs)
+
+  No Origin header (curl, server-to-server)
+      ->  Passes through unchanged
+
+
+----------------------------------------------------------------------
+TESTING
+----------------------------------------------------------------------
+
+  cargo test
+
+Three integration tests, all passing end-to-end through the server:
+
+  permissive_allows_any_origin
+  preflight_returns_204_with_headers
+  restricted_rejects_unknown_origin
+
+The doc-test in src/lib.rs is compiled (no_run).
+
+
+----------------------------------------------------------------------
+DESIGN
+----------------------------------------------------------------------
+
+This is the first plugin built on fornthulani::Middleware with the
+short-circuit capability added in fornthulani 0.1.
+
+Why it works:
+  - Middleware::before returns Result<Option<Response>, ThulaniError>
+    so CORS can answer OPTIONS preflight directly with 204.
+  - Middleware::after receives &Request so CORS can echo the
+    request's origin in Access-Control-Allow-Origin.
+
+The current implementation intentionally keeps to a narrow set of
+response headers:
+  Access-Control-Allow-Origin
+  Access-Control-Allow-Methods
+  Access-Control-Allow-Headers
+  Access-Control-Allow-Credentials
+  Access-Control-Expose-Headers
+  Access-Control-Max-Age
+
+Not implemented (out of scope for a micro framework):
+  - Vary: Origin (recommended when not using "*")
+  - Access-Control-Allow-Private-Network
+  - Wildcard subdomain matching
+
+
+----------------------------------------------------------------------
+COMPANION PLUGINS
+----------------------------------------------------------------------
+
+  fornthulani-plugin-json-body      req.json::<T>()
+  fornthulani-plugin-msgpack-body   req.msgpack::<T>()
+  fornthulani-plugin-cors           CORS middleware        (this crate)
+
+Future plugins in the same family:
+
+  fornthulani-plugin-auth           API keys, JWT
+  fornthulani-plugin-logging        request/response logging
+  fornthulani-plugin-ratelimit      per-IP throttling
+  fornthulani-plugin-compress       gzip
+  fornthulani-plugin-multipart      multipart/form-data bodies
+
+Each lives in its own repository and publishes independently.
+None of them touch fornthulani/src/.
+
+
+----------------------------------------------------------------------
+LICENSE
+----------------------------------------------------------------------
+
+Dual-licensed under MIT or Apache-2.0, at your option.
